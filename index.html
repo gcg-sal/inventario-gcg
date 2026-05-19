@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Inventario GCG</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0D1F2D;
+    --bg2:       #122333;
+    --bg3:       #162B3C;
+    --surface:   #1A3347;
+    --surface2:  #1F3D55;
+    --teal:      #1B6B7B;
+    --teal-mid:  #2A8A9A;
+    --teal-lite: #3AABB C;
+    --teal-glow: rgba(27,107,123,0.3);
+    --text:      #E8F4F8;
+    --muted:     #7AACBE;
+    --border:    rgba(255,255,255,0.08);
+    --border2:   rgba(42,138,154,0.4);
+    --green:     #2D8A5F;
+    --green-lite:#3AAD75;
+    --red:       #C0392B;
+    --purple:    #6C5CE7;
+    --purple-lite:#8B7FEF;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .gcg-logo {
+    width: 40px; height: 40px;
+    background: var(--teal);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13px; color: white;
+    letter-spacing: 0.05em; flex-shrink: 0;
+  }
+
+  .header-text { flex: 1; }
+  .header-title {
+    font-weight: 700; font-size: 16px; color: white;
+    letter-spacing: 0.01em;
+  }
+  .header-sub {
+    font-size: 10px; color: var(--muted);
+    letter-spacing: 0.1em; text-transform: uppercase; margin-top: 1px;
+  }
+
+  .header-right { text-align: right; flex-shrink: 0; }
+  .header-date { font-size: 12px; color: white; font-weight: 600; }
+  .header-sync { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  #sync-indicator { font-size: 11px; transition: color 0.3s; }
+
+  /* ── PROGRESS ── */
+  .progress-wrap {
+    padding: 8px 16px;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid var(--border);
+  }
+  .progress-bar-bg {
+    flex: 1; height: 5px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px; overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--teal), var(--teal-mid));
+    border-radius: 3px; transition: width 0.4s;
+    width: 0%;
+  }
+  .progress-label {
+    font-size: 11px; color: var(--muted);
+    white-space: nowrap; min-width: 65px; text-align: right;
+  }
+
+  /* ── NAV ── */
+  .section-nav {
+    display: flex; overflow-x: auto;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+  }
+  .section-nav::-webkit-scrollbar { display: none; }
+
+  .nav-tab {
+    padding: 10px 14px;
+    font-size: 11px; font-weight: 500;
+    color: var(--muted);
+    border: none; background: none; cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: white; border-bottom-color: var(--teal-mid); }
+  .nav-tab.consolidado-tab { color: rgba(108,92,231,0.7); }
+  .nav-tab.consolidado-tab.active { color: var(--purple-lite); border-bottom-color: var(--purple); }
+
+  .nav-tab .badge {
+    display: inline-block;
+    background: var(--teal);
+    color: white; border-radius: 8px;
+    font-size: 9px; padding: 1px 5px;
+    margin-left: 4px; font-weight: 600;
+    vertical-align: middle;
+  }
+  .nav-tab.done .badge { background: var(--green); }
+  .nav-tab.consolidado-tab .badge { background: var(--purple); }
+
+  /* ── MAIN ── */
+  main { padding-bottom: 120px; }
+  .section-panel { display: none; padding: 16px; }
+  .section-panel.active { display: block; }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border2);
+    flex-wrap: wrap;
+  }
+  .section-icon {
+    width: 36px; height: 36px;
+    background: var(--teal);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .section-title {
+    font-weight: 700; font-size: 17px; color: white;
+  }
+  .section-count {
+    margin-left: auto; font-size: 11px; color: var(--muted);
+    background: var(--surface); padding: 3px 10px;
+    border-radius: 20px; border: 1px solid var(--border);
+  }
+
+  /* ── TABLE ── */
+  .inv-table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface);
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .inv-table thead th {
+    background: var(--bg3);
+    color: var(--muted);
+    font-size: 9px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 9px 10px; text-align: left;
+    border-bottom: 1px solid var(--border2);
+  }
+  .inv-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .inv-table tbody tr:last-child { border-bottom: none; }
+  .inv-table tbody tr:hover { background: var(--surface2); }
+  .inv-table tbody tr.filled { background: rgba(45,138,95,0.12); }
+  .inv-table tbody tr.filled:hover { background: rgba(45,138,95,0.18); }
+  .inv-table tbody tr.manual-row { background: rgba(27,107,123,0.1); }
+  .inv-table tbody tr.manual-row.filled { background: rgba(45,138,95,0.15); }
+
+  .col-num {
+    padding: 10px 8px 10px 12px;
+    font-size: 10px; color: rgba(255,255,255,0.2);
+    width: 28px; text-align: right;
+  }
+  .col-codigo {
+    padding: 10px; font-size: 10px; color: var(--muted);
+    white-space: nowrap; width: 105px; font-family: monospace;
+  }
+  .col-producto {
+    padding: 10px 8px; font-size: 13px; font-weight: 500; color: var(--text);
+  }
+  .col-udm {
+    padding: 10px 6px; font-size: 10px;
+    color: var(--teal-mid); font-weight: 700;
+    width: 40px; text-align: center;
+  }
+  .col-cantidad { padding: 6px 8px; width: 105px; }
+  .col-del { padding: 6px 8px; width: 36px; text-align: center; }
+
+  .qty-input {
+    width: 100%; padding: 8px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    font-size: 15px; font-weight: 600;
+    text-align: right;
+    background: var(--bg3);
+    color: var(--text);
+    transition: border-color 0.2s, background 0.2s;
+    -webkit-appearance: none;
+    font-family: monospace;
+  }
+  .qty-input:focus {
+    outline: none;
+    border-color: var(--teal-mid);
+    background: var(--bg2);
+  }
+  .qty-input.has-value {
+    border-color: var(--green);
+    background: rgba(45,138,95,0.15);
+    color: var(--green-lite);
+  }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  /* ── ADD ROW BUTTON ── */
+  .btn-add-row {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 12px 16px;
+    background: transparent;
+    border: 1px dashed var(--border2);
+    border-radius: 10px;
+    color: var(--teal-mid);
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; margin-top: 8px;
+  }
+  .btn-add-row:hover { background: var(--teal-glow); border-color: var(--teal-mid); }
+  .btn-add-row .plus { font-size: 20px; font-weight: 300; line-height: 1; }
+
+  .btn-del-row {
+    background: none; border: none;
+    color: rgba(255,255,255,0.2); font-size: 15px;
+    cursor: pointer; padding: 4px; border-radius: 4px;
+    transition: color 0.2s;
+  }
+  .btn-del-row:hover { color: var(--red); }
+
+  .manual-tag {
+    font-size: 8px; background: var(--teal-glow);
+    color: var(--teal-mid); border-radius: 3px;
+    padding: 1px 4px; margin-left: 4px;
+    vertical-align: middle; border: 1px solid var(--border2);
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500; display: flex;
+    align-items: flex-end;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-sheet {
+    background: var(--bg2);
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid var(--border2);
+    padding: 24px 20px 40px;
+    width: 100%;
+    transform: translateY(100%); transition: transform 0.3s ease;
+  }
+  .modal-overlay.open .modal-sheet { transform: translateY(0); }
+  .modal-title {
+    font-weight: 700; font-size: 17px; color: white; margin-bottom: 4px;
+  }
+  .modal-sub { font-size: 11px; color: var(--muted); margin-bottom: 20px; }
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label {
+    display: block; font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .modal-field input, .modal-field select {
+    width: 100%; padding: 12px;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg3); color: var(--text);
+    font-size: 14px;
+  }
+  .modal-field input:focus, .modal-field select:focus {
+    outline: none; border-color: var(--teal-mid);
+  }
+  .modal-field select option { background: var(--bg2); }
+  .modal-row { display: flex; gap: 10px; }
+  .modal-row .modal-field { flex: 1; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-modal-cancel {
+    flex: 1; padding: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; font-size: 13px;
+    cursor: pointer; color: var(--muted);
+  }
+  .btn-modal-add {
+    flex: 2; padding: 14px;
+    background: var(--teal); border: none;
+    border-radius: 10px; font-weight: 700;
+    font-size: 14px; cursor: pointer; color: white;
+    letter-spacing: 0.05em;
+  }
+  .btn-modal-add:hover { background: var(--teal-mid); }
+
+  /* ── CONSOLIDADO ── */
+  .consolidado-header { border-bottom-color: var(--purple) !important; }
+  .consolidado-icon { background: var(--purple) !important; }
+  .consolidado-title { color: white !important; }
+
+  .cons-filter {
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }
+  .cons-filter input {
+    flex: 1; padding: 10px 12px;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--surface); color: var(--text); font-size: 13px;
+  }
+  .cons-filter input:focus { outline: none; border-color: var(--purple); }
+  .btn-cons-export {
+    padding: 10px 14px;
+    background: var(--purple); color: white;
+    border: none; border-radius: 8px;
+    font-weight: 700; font-size: 12px; cursor: pointer;
+  }
+
+  .cons-table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface);
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .cons-table thead th {
+    background: var(--bg3);
+    color: var(--muted);
+    font-size: 9px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 9px 10px; text-align: left;
+    border-bottom: 1px solid rgba(108,92,231,0.4);
+  }
+  .cons-table tbody tr { border-bottom: 1px solid var(--border); }
+  .cons-table tbody tr:last-child { border-bottom: none; }
+  .cons-table tbody tr:hover { background: var(--surface2); }
+  .cons-table tbody tr.multi { background: rgba(108,92,231,0.06); }
+  .cons-table td { padding: 9px 10px; font-size: 12px; }
+  .cons-codigo { font-size: 10px; color: var(--muted); width: 105px; font-family: monospace; }
+  .cons-producto { font-weight: 500; color: var(--text); }
+  .cons-bodegas { font-size: 10px; color: var(--muted); }
+  .cons-bodegas span {
+    display: inline-block;
+    background: var(--surface2);
+    border-radius: 4px; padding: 1px 5px;
+    margin: 1px; font-size: 9px; border: 1px solid var(--border);
+  }
+  .cons-bodegas span.multi-badge {
+    background: rgba(108,92,231,0.3); color: var(--purple-lite);
+    border-color: var(--purple);
+  }
+  .cons-total {
+    font-weight: 700; color: var(--teal-mid);
+    text-align: right; font-size: 14px; white-space: nowrap;
+    font-family: monospace;
+  }
+  .cons-udm { font-size: 10px; color: var(--teal-mid); font-weight: 700; width: 40px; text-align: center; }
+  .cons-empty {
+    text-align: center; padding: 40px 20px;
+    color: var(--muted); font-size: 13px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border2);
+    padding: 12px 16px;
+    display: flex; gap: 10px; align-items: center;
+    z-index: 200;
+  }
+  .footer-stats {
+    text-align: center; font-size: 10px;
+    color: var(--muted); line-height: 1.4; flex-shrink: 0;
+  }
+  .footer-stats strong { color: var(--teal-mid); font-size: 13px; display: block; font-weight: 700; }
+
+  .btn-export {
+    flex: 1; background: var(--teal);
+    color: white; border: none; border-radius: 10px;
+    padding: 14px; font-weight: 700; font-size: 14px;
+    letter-spacing: 0.05em; cursor: pointer;
+    transition: background 0.2s; text-transform: uppercase;
+  }
+  .btn-export:hover { background: var(--teal-mid); }
+  .btn-export:active { transform: scale(0.98); }
+
+  .btn-clear {
+    background: var(--surface); color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    font-size: 16px; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-clear:hover { background: var(--surface2); color: var(--text); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; top: 80px; left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--green); color: white;
+    padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; font-weight: 500;
+    opacity: 0; pointer-events: none;
+    transition: all 0.3s; z-index: 999; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── FOOTER BRAND ── */
+  .footer-brand {
+    font-size: 9px; color: rgba(255,255,255,0.2);
+    text-align: center; padding: 4px 0 0;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+
+  /* ── PIN SCREEN ── */
+  .pin-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 1000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 20px;
+  }
+  .pin-screen.hidden { display: none; }
+
+  .pin-logo {
+    width: 72px; height: 72px;
+    background: var(--teal);
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 22px; color: white;
+    letter-spacing: 0.05em; margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(27,107,123,0.4);
+  }
+  .pin-app-name {
+    font-size: 24px; font-weight: 700; color: white;
+    margin-bottom: 6px; text-align: center;
+  }
+  .pin-app-sub {
+    font-size: 12px; color: var(--muted);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 40px; text-align: center;
+  }
+  .pin-card {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 28px 24px;
+    width: 100%; max-width: 340px;
+  }
+  .pin-label {
+    font-size: 12px; color: var(--muted);
+    text-align: center; margin-bottom: 16px;
+    letter-spacing: 0.05em;
+  }
+  .pin-dots {
+    display: flex; justify-content: center; gap: 14px;
+    margin-bottom: 24px;
+  }
+  .pin-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--border2);
+    transition: all 0.2s;
+  }
+  .pin-dot.filled {
+    background: var(--teal-mid);
+    border-color: var(--teal-mid);
+    box-shadow: 0 0 8px rgba(42,138,154,0.5);
+  }
+  .pin-dot.error {
+    background: var(--red);
+    border-color: var(--red);
+  }
+  .pin-input-wrap { position: relative; margin-bottom: 20px; }
+  .pin-input {
+    width: 100%; padding: 14px;
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    background: var(--bg3); color: transparent;
+    font-size: 24px; text-align: center;
+    letter-spacing: 0.5em; caret-color: transparent;
+    font-family: monospace;
+  }
+  .pin-input:focus { outline: none; border-color: var(--teal-mid); }
+  .pin-input.shake {
+    animation: shake 0.4s ease;
+    border-color: var(--red) !important;
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+  }
+  .pin-error {
+    text-align: center; font-size: 12px;
+    color: var(--red); margin-bottom: 14px;
+    min-height: 18px; transition: opacity 0.3s;
+  }
+  .btn-pin-enter {
+    width: 100%; padding: 15px;
+    background: var(--teal); color: white;
+    border: none; border-radius: 10px;
+    font-weight: 700; font-size: 15px;
+    cursor: pointer; letter-spacing: 0.05em;
+    transition: background 0.2s;
+  }
+  .btn-pin-enter:hover { background: var(--teal-mid); }
+  .pin-footer {
+    margin-top: 40px; font-size: 10px;
+    color: rgba(255,255,255,0.15);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="gcg-logo">GCG</div>
+    <div class="header-text">
+      <div class="header-title">Inventario de Producción</div>
+      <div class="header-sub">Cocina de Vuelos S.A. de C.V.</div>
+    </div>
+    <div class="header-right">
+      <div class="header-date" id="fechaHoy"></div>
+      <div class="header-sync"><span id="sync-indicator"></span></div>
+    </div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-label" id="progressLabel">0 / 0</div>
+  </div>
+  <nav class="section-nav" id="sectionNav"></nav>
+</header>
+
+<main id="mainContent"></main>
+
+<footer>
+  <div class="footer-stats">
+    <strong id="footerFilled">0</strong>
+    artículos
+  </div>
+  <button class="btn-export" onclick="exportarExcel()">⬇ Exportar Excel</button>
+  <button class="btn-clear" onclick="limpiarSeccion()">↺</button>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal-sheet">
+    <div class="modal-title">Agregar Producto</div>
+    <div class="modal-sub" id="modalSubtitle"></div>
+    <div class="modal-field">
+      <label>Código SAP (opcional)</label>
+      <input type="text" id="mCodigo" placeholder="Ej: 1100001234" inputmode="numeric">
+    </div>
+    <div class="modal-field">
+      <label>Nombre del Producto *</label>
+      <input type="text" id="mProducto" placeholder="Ej: Aceite de Oliva Extra Virgen">
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Cantidad</label>
+        <input type="number" id="mCantidad" placeholder="0" inputmode="decimal" min="0" step="any">
+      </div>
+      <div class="modal-field">
+        <label>Unidad</label>
+        <select id="mUDM">
+          <option value="KG">KG</option>
+          <option value="UN">UN</option>
+          <option value="L">L</option>
+          <option value="0">—</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-modal-add" onclick="confirmarAgregarProducto()">AGREGAR</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzWGCPQTM1wzN_0y1b_GcKbEr-6nh74Fp-Oy409WnkvnC4GQCV0RZORqX8VFWBSwCGu/exec';
+const SECTIONS = [
+  {
+    id: "cocina",
+    nombre: "Cocina Caliente",
+    icono: "🔥",
+    items: [
+      ["1100001137","Aceite Oliva 3 L","L"],
+      ["2100000262","Aceite Pam Spray","UN"],
+      ["1100001152","Aceite Vegetal 17,5 L","L"],
+      ["1100000856","Achiote Molido","KG"],
+      ["1100000119","Ajo Blanco","KG"],
+      ["1100000987","Ajo Polvo","KG"],
+      ["1100000041","Almendra Rebanada","KG"],
+      ["1100001083","Arroz Basmati 997 Grs","KG"],
+      ["1100000897","Arroz Blanco","KG"],
+      ["1100000898","Arroz Blanco Precocido","KG"],
+      ["1100000813","Atun Agua","KG"],
+      ["1100000777","Avena Hojuelas Quaker","KG"],
+      ["1100000723","Azafran Rama","UN"],
+      ["0","Cafe Molido Coex 400 Gr","0"],
+      ["1100000172","Chile Guaco","KG"],
+      ["1100000133","Ciruela Pasa S/ Semilla","KG"],
+      ["1100000135","Clavo D/Olor","KG"],
+      ["1100000117","Comino Molido","KG"],
+      ["1100000123","Consome Carne","KG"],
+      ["1100000124","Consome Pollo","KG"],
+      ["0","Corazon Alcachofa Lta 165 Grs","0"],
+      ["1100000087","Curcuma Polvo","KG"],
+      ["1100001072","Curcuma Polvo 63 Grs","KG"],
+      ["0","Curry Polvo","0"],
+      ["6100000042","Encendedor","UN"],
+      ["1100000035","Especies Relajo","KG"],
+      ["1100000019","Frijol Negro","KG"],
+      ["1100000020","Frijol Rojo","KG"],
+      ["1100003746","Goma Xantana","KG"],
+      ["1100000925","Harina Maiz","KG"],
+      ["1100001125","Hierbas Italianas 6,25 OZ","KG"],
+      ["1100001207","Humo Liquido 1 KG","UN"],
+      ["1100000862","Laurel Seco","KG"],
+      ["1100001149","Leche Coco 355 Ml","L"],
+      ["1100001095","Leche Condensada 397 Grs","KG"],
+      ["1100001140","Leche Entera Bolsa 946 Ml","L"],
+      ["1100001094","Lenteja 14 OZ","KG"],
+      ["1100001148","Miel Maple 1 Gln","L"],
+      ["1100000766","Nuez Moscada 25 Grs","UN"],
+      ["1100000770","Oregano 5 Onz","UN"],
+      ["1100000707","Paprika","KG"],
+      ["1100001080","Pasta Concha 200 Grs","KG"],
+      ["1100001082","Pasta Farfalle 250 Grs","KG"],
+      ["1100001075","Pasta Orzo 751 Grs","KG"],
+      ["1100001076","Pasta Penne 454 Grs","KG"],
+      ["1100001069","Pasta Tomate 106 OZ","KG"],
+      ["1100001079","Pasta Tornillo 200 Grs","KG"],
+      ["0","Pepinillo Vinagre Conserva","0"],
+      ["1100003760","Pimienta Blanca Molida","KG"],
+      ["1100000664","Pimienta Negra Molida","KG"],
+      ["1100000667","Pimienta Verde Grano","KG"],
+      ["1100001085","Polenta C/Queso 170 Grs","KG"],
+      ["1100000493","Quinoa","KG"],
+      ["1100000495","Quinoa Roja","KG"],
+      ["1100000437","Romero Seco Bote","UN"],
+      ["1100000388","Sal","KG"],
+      ["1100000397","Salsa Bbq","KG"],
+      ["1100000032","Salsa Inglesa 3,78 L","0"],
+      ["1100001145","Salsa Soya 3,78 L","L"],
+      ["1100000368","Salsa Tomate","KG"],
+      ["1100000380","Semilla Calabaza","KG"],
+      ["1100000384","Semilla Linaza","KG"],
+      ["1100000387","Semola Trigo","KG"],
+      ["1100000353","Soya Proteina Blanca","KG"],
+      ["1100000354","Soya Proteina Cafe","KG"],
+      ["1100001167","Spaghetti 200 Grs","KG"],
+      ["1100000334","Tomatillo Verde","KG"],
+      ["1100000345","Tortilla Maiz 15 Cm","UN"],
+      ["1100000324","Uvas Pasas","KG"],
+      ["1100001143","Vinagre Balsamico 500 Ml","L"],
+      ["1100000311","Vinagre Blanco","L"],
+      ["1100001144","Vinagre Blanco 1 Gln","L"],
+      ["2100000961","Vino Blanco 750 ML","L"],
+      ["2100000340","Vino Tinto 750 Ml","UN"],
+      ["1100000767","Nuez Pecana","KG"],
+      ["1100000930","Harina Trigo","KG"],
+      ["1100000768","Nutella","UN"],
+      ["1100003698","Aceite Sésamo Shirakiku","L"],
+      ["1100000159","Chocolate Pastilla","KG"],
+      ["2100000647","Leche Semidescremada Dos Pinos 250 Ml","UN"],
+      ["1100001077","Pasta Rigatoni 250 Grs","KG"],
+      ["2100000807","Papel Film (12\"X2000)Mt","UN"],
+      ["1100000280","Canela Astilla/Raja","KG"],
+      ["1100000281","Canela Polvo","KG"],
+      ["1100000630","Polvo Hornear","KG"],
+      ["1100001081","Pasta Cous Cous 500 Grs","KG"],
+      ["1100000729","Azucar Blanca","KG"],
+      ["1100001097","Mantequilla 5 LB","KG"],
+      ["1100001129","Miel Abeja 750 Ml","L"],
+      ["2100000660","Jugo Naranja","L"],
+      ["1100001156","Esencia Vainilla 1 Gln","L"],
+      ["1100000927","Harina Maiz Amarilla Precocida","KG"],
+    ]
+  },
+  {
+    id: "sala-fria",
+    nombre: "Sala Fría",
+    icono: "🧊",
+    items: [
+      ["2100002734","Aderezo Mostaza Con Hierbas 9 Gr","UN"],
+      ["2100000306","Agua Bolsa Perlitas","UN"],
+      ["2100000239","Agua Perlitas 380 Ml","UN"],
+      ["2100000601","Avena Instantanea Quaker Cup 40 Grs","UN"],
+      ["6100000456","Bandeja Transparente Bisagrada Deli","UN"],
+      ["2100000974","Barra Tosh De Fresa 23 Grs","UN"],
+      ["6100001730","Bolsa Papel Antigrasa 125X56X320","UN"],
+      ["6100001650","Bolsa Papel Kraft #3","UN"],
+      ["6100000182","Bolsa Pp 4\" X 3/4\" X 5 1/2","UN"],
+      ["6100000183","Bolsa Pp 4X9 Calibre 14","UN"],
+      ["6100000184","Bolsa Pp 6 1/2 X 5 1/2","UN"],
+      ["0","Bolsa Transparente 10 Lb","0"],
+      ["6100000201","Bolsa Transparente 5 Lb","UN"],
+      ["6100000202","Bolsa Transparente Java 34X25","UN"],
+      ["6100000163","Bolsas Para Rack","UN"],
+      ["2100000783","Caja Blanca Sin Impresión","UN"],
+      ["0","Cereal Choco Krispis 450 Gr","0"],
+      ["2100000223","Cereal Hojuelas Azucarada 490 Grs","UN"],
+      ["2100000226","Cereal Komplete Almendras","UN"],
+      ["2100000156","Compota Vegetal","UN"],
+      ["6100000117","Contenedor/Deposito C/Bisagra (4\" X4\")","UN"],
+      ["6100000119","Contenedor/Deposito Doble Uso 24 Oz","UN"],
+      ["6100000130","Contenedor/Deposito Plast Sandwich","UN"],
+      ["2100002732","Crema Individual 28 Gr","UN"],
+      ["6100000076","Cuchara Med Picnic Ps","UN"],
+      ["6100000082","Deli Container 32 Oz","UN"],
+      ["6100000045","Ensaladera Plast Tapa (74 X 90)","UN"],
+      ["2100000123","Galleta Club Social","UN"],
+      ["2100000056","Gaseosa Coca Cola Lta","UN"],
+      ["2100000970","Gerber Dulce Sabores Varios","UN"],
+      ["2100001065","Leche Deslac/Semi-Descr Tetra 946 Ml","L"],
+      ["1100001139","Leche Entera Tetra Pack 946 Ml","L"],
+      ["2100000647","Leche Semidescremada Dos Pinos 250 Ml","UN"],
+      ["6100000620","Manga N°21","UN"],
+      ["1100000787","Mayonesa","KG"],
+      ["2100000608","Mayonesa Sachet","UN"],
+      ["1100000793","Mermelada Fresa","KG"],
+      ["2100000611","Mermelada Individual","UN"],
+      ["1100001129","Miel Abeja 750 ml","L"],
+      ["2100000850","Molde Aluminio (4X6) Cm","UN"],
+      ["1100001070","Mostaza 3500 Grs","KG"],
+      ["1100000746","Pan Blanco Monarca 540 Grs","UN"],
+      ["1100000721","Pan Sandwich Integral","UN"],
+      ["2100002898","Pan Tostado Bimbo 30Gr","UN"],
+      ["2100000534","Papas Original Lays 15 Grs","UN"],
+      ["2100000536","Papas Original Lays 42.5 Grs","UN"],
+      ["6100000552","Papel Aluminio 12\"X500\"","UN"],
+      ["6100000564","Papel Encerado 16 3/8 \" X 24 3/8\"","UN"],
+      ["2100000807","Papel Film (12\"X2000)Mt","UN"],
+      ["6100000539","Papel Pp 375 X 425 Mm (100 Un)","UN"],
+      ["6100000484","Plato Con División 8X8","UN"],
+      ["2100000469","Sal Sobre PQ","UN"],
+      ["2100000824","Set Cubiertos (3X1)","UN"],
+      ["2100001035","Snack Platanito Original Zambos 19Gr","UN"],
+      ["6100000414","Tapa 1 Oz","UN"],
+      ["6100000380","Tapa Domo Pp 24 Onz","UN"],
+      ["6100000382","Tapa Molde Aluminio (4 X 6 In)","UN"],
+      ["6100000386","Tapa Plana 12 Onz","UN"],
+      ["2100000829","Tapa Plast Ensaladera (74 X 90)","UN"],
+      ["6100000350","Tapa Vaso Plast 2 Onz","UN"],
+      ["6100000351","Tapa Vaso Plast 4 Onz","UN"],
+      ["2100000833","Tenedor Med Picnic Bb","UN"],
+      ["6100000309","Vaso 1 Onz","UN"],
+      ["6100000310","Vaso 2 Onz","UN"],
+      ["0","Vaso Doble Pared Kraf 12 Onz","0"],
+      ["0","Vaso Doble Pared Kraff #8","0"],
+      ["6100000306","Vaso Transparente #4","UN"],
+      ["6100000307","Vaso Transparente 12 Onz","UN"],
+      ["6100000274","Viñetas Amarillo","UN"],
+      ["6100000275","Viñetas Café","UN"],
+      ["6100000276","Viñetas Celeste","UN"],
+      ["6100000277","Viñetas Naranja","UN"],
+      ["6100000278","Viñetas Rojo","UN"],
+      ["6100000280","Viñetas Verde Flue","UN"],
+      ["6100000281","Viñetas Verde Osc","UN"],
+      ["6100000575","Palillo Pequeño","UN"],
+      ["2100000622","Mantequilla Individual","UN"],
+      ["1100000705","Banano","UN"],
+      ["1100000368","Salsa Tomate","KG"],
+      ["1100001148","Miel Maple 1 Gln","L"],
+      ["2100000458","Salsa Tomate Sachet","UN"],
+      ["1100000862","Laurel Seco","KG"],
+      ["1100000172","Chile Guaco","KG"],
+      ["1100001207","Humo Liquido 1 KG","UN"],
+      ["1100001094","Lenteja 14 OZ","KG"],
+      ["1100000945","Granola","KG"],
+      ["1100001055","Queso Crema 8 LB","KG"],
+      ["1100000263","Cerdo Jamon Picnic","KG"],
+      ["1100000228","Cerdo Salami Campesino","KG"],
+    ]
+  },
+  {
+    id: "panaderia",
+    nombre: "Panadería",
+    icono: "🍞",
+    items: [
+      ["1100000954","Abrillantador Pastelero","KG"],
+      ["1100003698","Aceite Sésamo Shirakiku","L"],
+      ["1100000094","Ajonjoli Blanco","KG"],
+      ["1100000095","Ajonjoli Negro","KG"],
+      ["1100000001","Apricot","KG"],
+      ["1100000729","Azucar Blanca","KG"],
+      ["1100000717","Azucar Pulverizada","KG"],
+      ["1100001113","Base Pastelera Chocolate 8 LB","KG"],
+      ["1100001114","Base Pastelera Vainilla 8,8 LB","KG"],
+      ["1100001158","Base Tres Leches Richs 4 L","L"],
+      ["1100000280","Canela Astilla/Raja","KG"],
+      ["1100000281","Canela Polvo","KG"],
+      ["1100000149","Chips Chocolate","KG"],
+      ["1100000158","Chocolate Negro Barra","KG"],
+      ["1100000143","Coco Rallado","KG"],
+      ["1100000144","Cocoa Polvo","KG"],
+      ["1100000113","Colorante Vegetal Amarillo Jelly","UN"],
+      ["1100000114","Colorante Vegetal Azul Jelly","UN"],
+      ["1100000116","Colorante Vegetal Super Rojo","UN"],
+      ["1100000069","Dulce D/ Panela","KG"],
+      ["1100000071","Dulce Leche","KG"],
+      ["1100000073","Durazno Melocoton Conserva","KG"],
+      ["1100001156","Esencia Vainilla 1 Gln","L"],
+      ["1100000043","Fecula Maiz Maicena","KG"],
+      ["1100000011","Fondant Blanco","KG"],
+      ["1100000957","Gelatina S/Sabor Polvo","KG"],
+      ["1100000959","Gelatina Sabores Polvo","KG"],
+      ["1100001086","Harina Integral 50 LB","KG"],
+      ["1100000930","Harina Trigo","KG"],
+      ["1100001087","Harina Trigo Fuerte 50 LB","KG"],
+      ["1100000933","Harina Trigo Semi Fuerte","KG"],
+      ["1100000909","Hojaldre Vitina","KG"],
+      ["1100000889","Jalea Piña","UN"],
+      ["2100000660","Jugo Naranja","L"],
+      ["1100000838","Levadura Fresca","KG"],
+      ["1100000839","Levadura Seca","KG"],
+      ["1100000815","Mani Salado","KG"],
+      ["2100000977","Nescafe Listo Stick 1.8 Grs","UN"],
+      ["1100001019","Pastelera Vitina","KG"],
+      ["6100000502","Pirote Capacillo #1","UN"],
+      ["6100000504","Pirote Capacillo #2","UN"],
+      ["6100000507","Pirote Capacillo #5","UN"],
+      ["1100000630","Polvo Hornear","KG"],
+      ["1100001107","Premezcla Chocolate 50 LB","KG"],
+      ["1100001109","Premezcla Vainilla 50 LB","KG"],
+      ["1100001208","Premezcla Otentic Original 1KG","UN"],
+      ["1100000583","Premezcla Vitina","KG"],
+      ["1100000370","Salvado Trigo","KG"],
+      ["1100000382","Semilla Chia 42 Grs","UN"],
+      ["6100000163","Bolsas Para Rack","UN"],
+      ["1100000384","Semilla Linaza","KG"],
+      ["1100000777","Avena Hojuelas Quaker","KG"],
+      ["1100001137","Aceite Oliva 3 L","L"],
+      ["2100000123","Galleta Club Social","UN"],
+      ["2100000601","Avena Instantanea Quaker Cup 40 Grs","UN"],
+      ["1100000153","Chocolate Blanco Barra","KG"],
+      ["1100000913","Huevo Gallina","UN"],
+      ["1100000324","Uvas Pasas","KG"],
+      ["1100000388","Sal","KG"],
+      ["2100000293","Yogurt Natural","L"],
+      ["1100001055","Queso Crema 8 LB","KG"],
+      ["1100000705","Banano","UN"],
+      ["1100001095","Leche Condensada 397 Grs","KG"],
+      ["1100000961","Arandano Fresco","KG"],
+      ["1100000779","Mora Postre","KG"],
+      ["1100001140","Leche Entera Bolsa 946 Ml","L"],
+      ["1100000013","Fresa","KG"],
+      ["1100000435","Romero Fresco","KG"],
+      ["1100001034","Arrayan","KG"],
+      ["1100000793","Mermelada Fresa","KG"],
+      ["1100000827","Maracuya","KG"],
+      ["2100000807","Papel Film (12\"X2000)Mt","UN"],
+      ["6100000552","Papel Aluminio 12\"X500\"","UN"],
+      ["6100000564","Papel Encerado 16 3/8 \" X 24 3/8\"","UN"],
+      ["6100001650","Bolsa Papel Kraft #3","UN"],
+      ["6100000620","Manga N°21","UN"],
+      ["2100000833","Tenedor Med Picnic Bb","UN"],
+      ["6100000480","Plato #6","UN"],
+    ]
+  },
+  {
+    id: "vegetales",
+    nombre: "Vegetales",
+    icono: "🥬",
+    items: [
+      ["1100000162","Aguacate","KG"],
+      ["1100000108","Albahaca","KG"],
+      ["1100000000","Apio","KG"],
+      ["1100000961","Arandano Fresco","KG"],
+      ["1100000846","Arveja/Guisante C/Vaina","KG"],
+      ["1100000268","Calabacin Zuchini Verde","KG"],
+      ["1100000238","Cebolla Cabezona Blanca","KG"],
+      ["1100000239","Cebolla Cabezona Morada","KG"],
+      ["1100000241","Cebolla Puerro","KG"],
+      ["1100000163","Champiñon Entero Fresco","KG"],
+      ["1100000174","Chile Jalapeño","KG"],
+      ["1100000175","Chile Rojo","KG"],
+      ["1100000146","Chile Verde","KG"],
+      ["1100000127","Cilantro","KG"],
+      ["1100000046","Ejote Habichuela Frances","KG"],
+      ["1100000013","Fresa","KG"],
+      ["1100000916","Guisquil","KG"],
+      ["1100000950","Guicoy Amarillo","KG"],
+      ["1100000893","Jengibre Fresco","KG"],
+      ["1100000858","Kiwi","KG"],
+      ["1100000880","Lechuga Crespa","KG"],
+      ["1100000881","Lechuga Crespa Morada","KG"],
+      ["1100000833","Lechuga Romana","KG"],
+      ["1100000842","Limon Persico","KG"],
+      ["1100000806","Mandarina Clementina","UN"],
+      ["1100000821","Manzana Gala #150","UN"],
+      ["1100000826","Manzana Verde #150","UN"],
+      ["1100000791","Melon","KG"],
+      ["1100000755","Naranja Americana","KG"],
+      ["1100000730","Papa","KG"],
+      ["1100000718","Papaya","KG"],
+      ["1100000702","Pepino","KG"],
+      ["1100000648","Perejil Liso","KG"],
+      ["1100000668","Piña","KG"],
+      ["1100001021","Pipian/Curcubita","KG"],
+      ["1100000438","Repollo Blanco","KG"],
+      ["1100000435","Romero Fresco","KG"],
+      ["1100000373","Sandia","KG"],
+      ["1100000332","Tomate Roma","KG"],
+      ["1100000334","Tomatillo Verde","KG"],
+      ["1100000335","Tomillo Fresco","KG"],
+      ["1100000323","Uva Verde S/Semilla","KG"],
+      ["1100000299","Zanahoria","KG"],
+      ["1100000300","Zanahoria Baby","KG"],
+      ["1100000634","Platano Verde","KG"],
+      ["1100000731","Papa Baby","KG"],
+      ["1100000171","Chile Amarillo","KG"],
+      ["1100000307","Berenjena","KG"],
+      ["1100000060","Eneldo Fresco","KG"],
+    ]
+  },
+  {
+    id: "lacteos",
+    nombre: "C. Frío Lácteos",
+    icono: "🧀",
+    items: [
+      ["1100000128","Aceituna Negra Deshuesada","KG"],
+      ["1100001100","Alcaparra 830 Grs","KG"],
+      ["1100000001","Apricot","KG"],
+      ["1100000263","Cerdo Jamon Picnic","KG"],
+      ["1100000208","Cerdo Jamon Virginia Ahumado","KG"],
+      ["1100000209","Cerdo Jamon York","KG"],
+      ["1100000213","Cerdo Lomo Candiense","KG"],
+      ["1100000228","Cerdo Salami Campesino","KG"],
+      ["1100000186","Cerdo Tocino Ahumado","KG"],
+      ["1100000148","Chipotle 220 Grs","UN"],
+      ["1100000133","Ciruela Pasa S/ Semilla","KG"],
+      ["1100001031","Crema Corriente","KG"],
+      ["2100002732","Crema Individual 28 Gr","UN"],
+      ["1100000073","Durazno Melocoton Conserva","KG"],
+      ["1100001153","Huevo Pasteurizado 3,62 L","L"],
+      ["1100001149","Leche Coco 355 Ml","L"],
+      ["1100001134","Maiz Desgranado Lta 425 Grs","KG"],
+      ["1100001097","Mantequilla 5 LB","KG"],
+      ["2100000622","Mantequilla Individual","UN"],
+      ["1100000787","Mayonesa","KG"],
+      ["1100001070","Mostaza 3500 Grs","KG"],
+      ["1100001069","Pasta Tomate 106 OZ","KG"],
+      ["1100000693","Pavo Jamon","KG"],
+      ["1100000694","Pavo Jamon Ahumado","KG"],
+      ["1100000700","Pepinillo Rebanado Lta","KG"],
+      ["1100000644","Pepperoni","KG"],
+      ["1100000628","Pollo Salchicha","KG"],
+      ["1100000503","Queso Amarillo","KG"],
+      ["1100000505","Queso Blanco","KG"],
+      ["1100000506","Queso Blando","KG"],
+      ["1100000514","Queso Capita C/Loroco","KG"],
+      ["1100001047","Queso Cheddard Bloque 5 LB","KG"],
+      ["1100001055","Queso Crema 8 LB","KG"],
+      ["1100000537","Queso Mantequilla","KG"],
+      ["1100001046","Queso Mozzarella Tajado 5 LB","KG"],
+      ["1100000478","Queso Parmesano Bloque","KG"],
+      ["1100000481","Queso Parmesano Rallado","KG"],
+      ["1100000486","Queso Ricotta","KG"],
+      ["1100000397","Salsa Bbq","KG"],
+      ["1100001128","Salsa Inglesa 3,78 L","L"],
+      ["1100001145","Salsa Soya 3,78 L","L"],
+      ["1100000368","Salsa Tomate","KG"],
+      ["2100000936","Tamal Pollo","UN"],
+      ["1100000345","Tortilla Maiz 15 Cm","UN"],
+      ["1100001144","Vinagre Blanco 1 Gln","L"],
+      ["2100000340","Vino Tinto 750 Ml","UN"],
+      ["2100000325","Yogurt Banano Fresa 200 Ml","UN"],
+      ["2100000331","Yogurt Fresa 200 Ml","UN"],
+      ["2100000336","Yogurt Griego Fresa 150 Grs","UN"],
+      ["2100000292","Yogurt Melocoton 200 Ml","UN"],
+      ["2100000295","Yogurt Safari 100 Ml","UN"],
+      ["1100000474","Queso Mozzarella Rallado","KG"],
+    ]
+  },
+  {
+    id: "carniceria",
+    nombre: "Carnicería",
+    icono: "🥩",
+    items: [
+      ["1100003738","Ablandador Neutro","KG"],
+      ["6100001682","Bolsa Empaque Al Vacio 10\"X14\"","UN"],
+      ["1100001232","Cebolla En Polvo","KG"],
+      ["1100000249","Cerdo Chicharron Molida","KG"],
+      ["1100000210","Cerdo Lomo","KG"],
+      ["1100000057","Empanizador","KG"],
+      ["1100001111","Empanizador Panko 7 OZ","KG"],
+      ["1100003734","Maltodextrina Star Dri","KG"],
+      ["1100001233","Mostaza En Polvo","KG"],
+      ["1100000657","Pescado Robalo Filete","KG"],
+      ["1100000615","Pollo Pechuga","KG"],
+      ["1100000616","Pollo Pechuga Americana","KG"],
+      ["1100000622","Pollo Pechuga S/Hueso","KG"],
+      ["1100000440","Res Aguja","KG"],
+      ["1100000466","Res Lomo Filete Marinado","KG"],
+      ["1100000423","Res Posta Negra","KG"],
+      ["1100000391","Salmon Ahumado","KG"],
+      ["1100000707","Paprika","KG"],
+      ["6100000202","Bolsa Transparente Java 34X25","UN"],
+      ["1100000354","Soya Proteina Cafe","KG"],
+      ["1100000353","Soya Proteina Blanca","KG"],
+      ["1100003806","Almidon Maiz Modificado","UN"],
+      ["1100000987","Ajo Polvo","KG"],
+      ["1100003760","Pimienta Blanca Molida","KG"],
+      ["2100000807","Papel Film (12\"X2000)Mt","UN"],
+      ["6100000552","Papel Aluminio 12\"X500\"","UN"],
+      ["1100000658","Pescado Tilapia Filete","KG"],
+      ["1100000913","Huevo Gallina","UN"],
+      ["1100000186","Cerdo Tocino Ahumado","KG"],
+      ["6100000278","Viñetas Rojo","UN"],
+      ["6100000274","Viñetas Amarillo","UN"],
+      ["6100000277","Viñetas Naranja","UN"],
+      ["6100000280","Viñetas Verde Flue","UN"],
+      ["6100000275","Viñetas Café","UN"],
+      ["6100000276","Viñetas Celeste","UN"],
+    ]
+  },
+  {
+    id: "vacpac",
+    nombre: "Vac Pac",
+    icono: "📦",
+    items: [
+      ["1100001137","Aceite Oliva 3 L","L"],
+      ["1100001152","Aceite Vegetal 17,5 L","L"],
+      ["1100000119","Ajo Blanco","KG"],
+      ["1100000987","Ajo Polvo","KG"],
+      ["1100000108","Albahaca","KG"],
+      ["1100003806","Almidon Maiz Modificado","UN"],
+      ["1100000000","Apio","KG"],
+      ["6100001682","Bolsa Empaque Al Vacio 10\"X14\"","UN"],
+      ["1100000238","Cebolla Cabezona Blanca","KG"],
+      ["1100001232","Cebolla En Polvo","KG"],
+      ["1100000146","Chile Verde","KG"],
+      ["1100000133","Ciruela Pasa S/ Semilla","KG"],
+      ["1100000124","Consome Pollo","KG"],
+      ["1100000123","Consome Carne","KG"],
+      ["1100000957","Gelatina S/Sabor Polvo","KG"],
+      ["1100000930","Harina Trigo","KG"],
+      ["1100000842","Limon Persico","KG"],
+      ["1100000622","Pollo Pechuga S/Hueso","KG"],
+      ["1100000210","Cerdo Lomo","KG"],
+      ["1100003734","Maltodextrina Star Dri","KG"],
+      ["1100000787","Mayonesa","KG"],
+      ["1100001233","Mostaza En Polvo","KG"],
+      ["6100000552","Papel Aluminio 12\"X500\"","UN"],
+      ["1100000707","Paprika","KG"],
+      ["1100001069","Pasta Tomate 106 OZ","KG"],
+      ["1100000616","Pollo Pechuga Americana","KG"],
+      ["1100000615","Pollo Pechuga","KG"],
+      ["1100001133","Pepinillo Rebanado Lta 2,3 KG","KG"],
+      ["1100000648","Perejil Liso","KG"],
+      ["1100003760","Pimienta Blanca Molida","KG"],
+      ["1100000664","Pimienta Negra Molida","KG"],
+      ["1100000423","Res Posta Negra","KG"],
+      ["1100000474","Queso Mozzarella Rallado","KG"],
+      ["1100000388","Sal","KG"],
+      ["1100000186","Cerdo Tocino Ahumado","KG"],
+      ["1100000329","Tomate P/Salsa","KG"],
+      ["1100000311","Vinagre Blanco","L"],
+      ["2100000340","Vino Tinto 750 Ml","UN"],
+      ["1100000299","Zanahoria","KG"],
+    ]
+  },
+  {
+    id: "congelador",
+    nombre: "Congelador",
+    icono: "❄️",
+    items: []
+  }
+];
+
+
+let activeSection = 0;
+const quantities = {};
+const manualItems = {};
+
+// Ordenar artículos alfabéticamente en todas las secciones
+SECTIONS.forEach(s => {
+  s.items.sort((a, b) => a[1].localeCompare(b[1], 'es', {sensitivity: 'base'}));
+  quantities[s.id] = {};
+  manualItems[s.id] = [];
+});
+
+let modalTargetSection = null;
+const LS_KEY = 'gcg_inventario_v3';
+
+// ──────────────────────────────────────────────
+//  LOCALSTORAGE — guardar y restaurar
+// ──────────────────────────────────────────────
+function guardarEstado(secId) {
+  // 1. Siempre guardar en localStorage
+  try {
+    const estado = { quantities: {}, manualItems: {} };
+    SECTIONS.forEach(s => {
+      estado.quantities[s.id] = quantities[s.id];
+      estado.manualItems[s.id] = manualItems[s.id];
+    });
+    localStorage.setItem(LS_KEY, JSON.stringify(estado));
+  } catch(e) {}
+
+  // 2. Si se especificó sección, sincronizar esa sección con Sheets
+  if (secId) sincronizarSeccion(secId);
+}
+
+function sincronizarSeccion(secId) {
+  const sec = SECTIONS.find(s => s.id === secId);
+  if (!sec) return;
+
+  // Armar filas: header + items preset + items manuales
+  const rows = [['CODIGO SAP', 'PRODUCTO', 'CANTIDAD', 'UDM', 'TIPO']];
+  sec.items.forEach((item, ri) => {
+    const qty = quantities[secId][ri] !== undefined ? quantities[secId][ri] : '';
+    rows.push([item[0], item[1], qty, item[2], 'Lista']);
+  });
+  manualItems[secId].forEach(m => {
+    const qty = quantities[secId][m.key] !== undefined ? quantities[secId][m.key] : '';
+    rows.push([m.codigo || '', m.producto, qty, m.udm, 'Manual']);
+  });
+
+  mostrarIndicador(secId, 'guardando');
+  const params = new URLSearchParams({
+    action: 'write',
+    secId: secId,
+    rows: JSON.stringify(rows)
+  });
+  fetch(SCRIPT_URL + '?' + params.toString())
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) mostrarIndicador(secId, 'ok');
+    else mostrarIndicador(secId, 'error');
+  })
+  .catch(() => mostrarIndicador(secId, 'error'));
+}
+
+function mostrarIndicador(secId, estado) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  const msgs = { guardando: '⏳ Guardando...', ok: '✓ Guardado en Sheets', error: '⚠ Sin conexión — guardado local' };
+  const colors = { guardando: '#C9A84C', ok: '#2D7A4F', error: '#8B4513' };
+  el.textContent = msgs[estado] || '';
+  el.style.color = colors[estado] || '#fff';
+  if (estado === 'ok') setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+}
+
+function restaurarEstado() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const estado = JSON.parse(raw);
+    // Restaurar cantidades preset
+    SECTIONS.forEach(s => {
+      if (estado.quantities && estado.quantities[s.id]) {
+        Object.assign(quantities[s.id], estado.quantities[s.id]);
+      }
+      // Restaurar artículos manuales
+      if (estado.manualItems && estado.manualItems[s.id]) {
+        manualItems[s.id] = estado.manualItems[s.id];
+      }
+    });
+  } catch(e) {}
+}
+
+// ──────────────────────────────────────────────
+//  INIT
+// ──────────────────────────────────────────────
+function init() {
+  const now = new Date();
+  document.getElementById('fechaHoy').textContent =
+    now.toLocaleDateString('es-SV', {day:'2-digit', month:'long', year:'numeric'});
+  restaurarEstado();
+  buildNav();
+  buildPanels();
+  activateSection(0);
+  restoreUI();
+  updateProgress();
+  cargarDesdeSheets();
+}
+
+function cargarDesdeSheets() {
+  mostrarIndicador(null, 'guardando');
+  document.getElementById('sync-indicator').textContent = '⏳ Cargando datos...';
+  fetch(SCRIPT_URL + '?action=read')
+  .then(r => r.json())
+  .then(resp => {
+    if (!resp.ok || !resp.data) {
+      document.getElementById('sync-indicator').textContent = '⚠ Sin conexión — datos locales';
+      setTimeout(() => { document.getElementById('sync-indicator').textContent = ''; }, 4000);
+      return;
+    }
+    // Merge Sheets data into state — Sheets wins over localStorage
+    let hayDatos = false;
+    SECTIONS.forEach(sec => {
+      const rows = resp.data[sec.id];
+      if (!rows || rows.length <= 1) return; // solo header o vacío
+      // Reset this section
+      quantities[sec.id] = {};
+      manualItems[sec.id] = [];
+      // Remove manual rows from DOM
+      const tbody = document.getElementById('tbody-' + sec.id);
+      tbody.querySelectorAll('.manual-row').forEach(r => r.remove());
+
+      rows.slice(1).forEach((row, i) => {
+        const [codigo, producto, qty, udm, tipo] = row;
+        if (!producto) return;
+        if (tipo === 'Manual') {
+          // Re-add manual item
+          const key = 'm-' + Date.now() + '-' + i;
+          const mItem = { key, codigo, producto, udm };
+          manualItems[sec.id].push(mItem);
+          const rowNum = sec.items.length + manualItems[sec.id].length;
+          const rowHTML = buildManualRow(sec.id, mItem, rowNum);
+          tbody.insertAdjacentHTML('beforeend', rowHTML);
+          if (qty !== '') {
+            quantities[sec.id][key] = qty;
+            const input = document.getElementById('qty-' + sec.id + '-' + key);
+            const rowEl = document.getElementById('row-' + sec.id + '-' + key);
+            if (input) { input.value = qty; input.classList.add('has-value'); }
+            if (rowEl) { rowEl.classList.add('filled'); rowEl.classList.add('manual-row'); }
+          }
+        } else {
+          // Find matching preset item by producto name
+          const ri = sec.items.findIndex(it => it[1] === producto);
+          if (ri === -1) return;
+          if (qty !== '') {
+            quantities[sec.id][ri] = qty;
+            const input = document.getElementById('qty-' + sec.id + '-' + ri);
+            const rowEl = document.getElementById('row-' + sec.id + '-' + ri);
+            if (input) { input.value = qty; input.classList.add('has-value'); }
+            if (rowEl) rowEl.classList.add('filled');
+            hayDatos = true;
+          }
+        }
+      });
+      updateSectionCount(sec.id);
+    });
+    updateProgress();
+    // Save merged state to localStorage
+    try {
+      const estado = { quantities: {}, manualItems: {} };
+      SECTIONS.forEach(s => { estado.quantities[s.id] = quantities[s.id]; estado.manualItems[s.id] = manualItems[s.id]; });
+      localStorage.setItem(LS_KEY, JSON.stringify(estado));
+    } catch(e) {}
+    document.getElementById('sync-indicator').textContent = hayDatos ? '✓ Datos cargados' : '✓ Conectado';
+    setTimeout(() => { document.getElementById('sync-indicator').textContent = ''; }, 3000);
+  })
+  .catch(() => {
+    document.getElementById('sync-indicator').textContent = '⚠ Sin conexión — datos locales';
+    setTimeout(() => { document.getElementById('sync-indicator').textContent = ''; }, 4000);
+  });
+}
+
+function restoreUI() {
+  SECTIONS.forEach(sec => {
+    // Restore preset quantities
+    sec.items.forEach((item, ri) => {
+      const val = quantities[sec.id][ri];
+      if (val !== undefined) {
+        const input = document.getElementById(`qty-${sec.id}-${ri}`);
+        const row = document.getElementById(`row-${sec.id}-${ri}`);
+        if (input) { input.value = val; input.classList.add('has-value'); }
+        if (row) row.classList.add('filled');
+      }
+    });
+    // Restore manual rows
+    if (manualItems[sec.id].length > 0) {
+      const tbody = document.getElementById(`tbody-${sec.id}`);
+      manualItems[sec.id].forEach((mItem, mi) => {
+        const rowNum = sec.items.length + mi + 1;
+        const rowHTML = buildManualRow(sec.id, mItem, rowNum);
+        tbody.insertAdjacentHTML('beforeend', rowHTML);
+        // Restore its quantity
+        const val = quantities[sec.id][mItem.key];
+        if (val !== undefined) {
+          const input = document.getElementById(`qty-${sec.id}-${mItem.key}`);
+          const row = document.getElementById(`row-${sec.id}-${mItem.key}`);
+          if (input) { input.value = val; input.classList.add('has-value'); }
+          if (row) { row.classList.add('filled'); row.classList.add('manual-row'); }
+        }
+      });
+      updateSectionCount(sec.id);
+    }
+  });
+}
+
+// ──────────────────────────────────────────────
+//  NAV
+// ──────────────────────────────────────────────
+function buildNav() {
+  const nav = document.getElementById('sectionNav');
+  SECTIONS.forEach((sec, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-tab';
+    btn.dataset.idx = i;
+    btn.innerHTML = `${sec.icono} ${sec.nombre} <span class="badge" id="badge-${sec.id}">0</span>`;
+    btn.onclick = () => activateSection(i);
+    nav.appendChild(btn);
+  });
+  // Consolidado tab
+  const cons = document.createElement('button');
+  cons.className = 'nav-tab consolidado-tab';
+  cons.innerHTML = `📊 Consolidado <span class="badge" id="badge-consolidado">0</span>`;
+  cons.onclick = () => activateConsolidado();
+  nav.appendChild(cons);
+}
+
+// ──────────────────────────────────────────────
+//  PANELS
+// ──────────────────────────────────────────────
+function buildPanels() {
+  const main = document.getElementById('mainContent');
+  SECTIONS.forEach((sec, si) => {
+    const div = document.createElement('div');
+    div.className = 'section-panel';
+    div.id = `panel-${sec.id}`;
+
+    let tableHTML = '';
+    if (sec.items.length > 0) {
+      let rows = sec.items.map((item, ri) => buildPresetRow(sec.id, ri, item)).join('');
+      tableHTML = `
+        <table class="inv-table" id="table-${sec.id}">
+          <thead><tr>
+            <th>#</th><th>Código SAP</th><th>Producto</th><th>UDM</th>
+            <th style="text-align:right">Cantidad</th><th></th>
+          </tr></thead>
+          <tbody id="tbody-${sec.id}">${rows}</tbody>
+        </table>`;
+    } else {
+      tableHTML = `
+        <table class="inv-table" id="table-${sec.id}">
+          <thead><tr>
+            <th>#</th><th>Código SAP</th><th>Producto</th><th>UDM</th>
+            <th style="text-align:right">Cantidad</th><th></th>
+          </tr></thead>
+          <tbody id="tbody-${sec.id}"></tbody>
+        </table>`;
+    }
+
+    div.innerHTML = `
+      <div class="section-header">
+        <div class="section-icon">${sec.icono}</div>
+        <div class="section-title">${sec.nombre}</div>
+        <div class="section-count" id="count-${sec.id}">${sec.items.length} artículos</div>
+      </div>
+      ${tableHTML}
+      <button class="btn-add-row" onclick="openModal('${sec.id}')">
+        <span class="plus">＋</span> Agregar producto no listado
+      </button>`;
+    main.appendChild(div);
+  });
+
+  // Consolidado panel
+  const cDiv = document.createElement('div');
+  cDiv.className = 'section-panel';
+  cDiv.id = 'panel-consolidado';
+  cDiv.innerHTML = `
+    <div class="section-header consolidado-header">
+      <div class="section-icon consolidado-icon">📊</div>
+      <div class="section-title consolidado-title">Consolidado General</div>
+      <div class="section-count" id="count-consolidado">0 artículos</div>
+    </div>
+    <div class="cons-filter">
+      <input type="text" id="consSearch" placeholder="🔍 Buscar artículo..." oninput="renderConsolidado()">
+      <button class="btn-cons-export" onclick="exportarExcelConsolidado()">⬇ Excel</button>
+    </div>
+    <div id="consBody"></div>`;
+  main.appendChild(cDiv);
+}
+
+function buildPresetRow(secId, ri, item) {
+  return `<tr id="row-${secId}-${ri}">
+    <td class="col-num">${ri+1}</td>
+    <td class="col-codigo">${item[0]}</td>
+    <td class="col-producto">${item[1]}</td>
+    <td class="col-udm">${item[2]}</td>
+    <td class="col-cantidad">
+      <input type="number" inputmode="decimal" min="0" step="any"
+        class="qty-input" id="qty-${secId}-${ri}" placeholder="—"
+        onchange="handleQty('${secId}','${ri}',this.value)"
+        oninput="handleQty('${secId}','${ri}',this.value)">
+    </td>
+    <td class="col-del"></td>
+  </tr>`;
+}
+
+function buildManualRow(secId, mItem, rowNum) {
+  return `<tr id="row-${secId}-${mItem.key}" class="manual-row">
+    <td class="col-num">${rowNum}<span class="manual-tag">+</span></td>
+    <td class="col-codigo">${mItem.codigo || '—'}</td>
+    <td class="col-producto">${mItem.producto}</td>
+    <td class="col-udm">${mItem.udm}</td>
+    <td class="col-cantidad">
+      <input type="number" inputmode="decimal" min="0" step="any"
+        class="qty-input" id="qty-${secId}-${mItem.key}" placeholder="—"
+        onchange="handleQty('${secId}','${mItem.key}',this.value)"
+        oninput="handleQty('${secId}','${mItem.key}',this.value)">
+    </td>
+    <td class="col-del">
+      <button class="btn-del-row" onclick="eliminarManual('${secId}','${mItem.key}')" title="Eliminar">✕</button>
+    </td>
+  </tr>`;
+}
+
+// ──────────────────────────────────────────────
+//  ACTIVATE
+// ──────────────────────────────────────────────
+function activateSection(idx) {
+  document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  const sec = SECTIONS[idx];
+  document.getElementById(`panel-${sec.id}`).classList.add('active');
+  document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  activeSection = idx;
+  document.querySelectorAll('.nav-tab')[idx].scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+}
+
+function activateConsolidado() {
+  document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-consolidado').classList.add('active');
+  const tabs = document.querySelectorAll('.nav-tab');
+  tabs[tabs.length - 1].classList.add('active');
+  tabs[tabs.length - 1].scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+  activeSection = -1;
+  renderConsolidado();
+  sincronizarConsolidado();
+}
+
+// ──────────────────────────────────────────────
+//  QUANTITIES
+// ──────────────────────────────────────────────
+function handleQty(secId, rowKey, val) {
+  const input = document.getElementById(`qty-${secId}-${rowKey}`);
+  const row = document.getElementById(`row-${secId}-${rowKey}`);
+  if (val !== '' && !isNaN(parseFloat(val))) {
+    quantities[secId][rowKey] = val;
+    input.classList.add('has-value');
+    row.classList.add('filled');
+  } else {
+    delete quantities[secId][rowKey];
+    input.classList.remove('has-value');
+    row.classList.remove('filled');
+  }
+  updateProgress();
+  guardarEstado(secId);
+}
+
+// ──────────────────────────────────────────────
+//  MODAL - ADD PRODUCT
+// ──────────────────────────────────────────────
+function openModal(secId) {
+  modalTargetSection = secId;
+  const sec = SECTIONS.find(s => s.id === secId);
+  document.getElementById('modalSubtitle').textContent = `Agregar a: ${sec.icono} ${sec.nombre}`;
+  document.getElementById('mCodigo').value = '';
+  document.getElementById('mProducto').value = '';
+  document.getElementById('mCantidad').value = '';
+  document.getElementById('mUDM').value = 'KG';
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('mProducto').focus(), 350);
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function confirmarAgregarProducto() {
+  const producto = document.getElementById('mProducto').value.trim();
+  if (!producto) { alert('Ingresá el nombre del producto.'); return; }
+  const codigo = document.getElementById('mCodigo').value.trim() || '—';
+  const cantidad = document.getElementById('mCantidad').value.trim();
+  const udm = document.getElementById('mUDM').value;
+  const key = 'm-' + Date.now();
+
+  const mItem = { key, codigo, producto, udm };
+  manualItems[modalTargetSection].push(mItem);
+
+  // Add row to table
+  const tbody = document.getElementById(`tbody-${modalTargetSection}`);
+  const totalRows = SECTIONS.find(s => s.id === modalTargetSection).items.length + manualItems[modalTargetSection].length;
+  const rowHTML = buildManualRow(modalTargetSection, mItem, totalRows);
+  tbody.insertAdjacentHTML('beforeend', rowHTML);
+
+  // Set quantity if provided
+  if (cantidad !== '' && !isNaN(parseFloat(cantidad))) {
+    const input = document.getElementById(`qty-${modalTargetSection}-${key}`);
+    input.value = cantidad;
+    handleQty(modalTargetSection, key, cantidad);
+  }
+
+  // Update count
+  updateSectionCount(modalTargetSection);
+  guardarEstado(modalTargetSection);
+  closeModal();
+  showToast(`✓ "${producto}" agregado`);
+}
+
+function eliminarManual(secId, key) {
+  if (!confirm('¿Eliminar este artículo?')) return;
+  // Remove from manualItems
+  manualItems[secId] = manualItems[secId].filter(m => m.key !== key);
+  delete quantities[secId][key];
+  // Remove row
+  const row = document.getElementById(`row-${secId}-${key}`);
+  if (row) row.remove();
+  updateSectionCount(secId);
+  updateProgress();
+  guardarEstado(secId);
+  showToast('Artículo eliminado');
+}
+
+function updateSectionCount(secId) {
+  const sec = SECTIONS.find(s => s.id === secId);
+  const total = sec.items.length + manualItems[secId].length;
+  const el = document.getElementById(`count-${secId}`);
+  if (el) el.textContent = `${total} artículos`;
+}
+
+// ──────────────────────────────────────────────
+//  CONSOLIDADO
+// ──────────────────────────────────────────────
+function buildConsolidadoData() {
+  // Map: codigo+producto+udm -> {codigo, producto, udm, bodegas:[{nombre, qty}], total}
+  const map = {};
+
+  SECTIONS.forEach(sec => {
+    // Preset items
+    sec.items.forEach((item, ri) => {
+      const qty = quantities[sec.id][ri];
+      if (qty === undefined || qty === '') return;
+      const qtyN = parseFloat(qty);
+      if (isNaN(qtyN)) return;
+      const key = `${item[0]}||${item[1]}||${item[2]}`;
+      if (!map[key]) map[key] = {codigo: item[0], producto: item[1], udm: item[2], bodegas: [], total: 0};
+      map[key].bodegas.push({nombre: sec.nombre, icono: sec.icono, qty: qtyN});
+      map[key].total += qtyN;
+    });
+    // Manual items
+    manualItems[sec.id].forEach(mItem => {
+      const qty = quantities[sec.id][mItem.key];
+      if (qty === undefined || qty === '') return;
+      const qtyN = parseFloat(qty);
+      if (isNaN(qtyN)) return;
+      const key = `${mItem.codigo}||${mItem.producto}||${mItem.udm}`;
+      if (!map[key]) map[key] = {codigo: mItem.codigo, producto: mItem.producto, udm: mItem.udm, bodegas: [], total: 0};
+      map[key].bodegas.push({nombre: sec.nombre, icono: sec.icono, qty: qtyN});
+      map[key].total += qtyN;
+    });
+  });
+
+  return Object.values(map).sort((a,b) => a.producto.localeCompare(b.producto));
+}
+
+function renderConsolidado() {
+  const data = buildConsolidadoData();
+  const search = (document.getElementById('consSearch')?.value || '').toLowerCase();
+  const filtered = search ? data.filter(d => d.producto.toLowerCase().includes(search) || d.codigo.toLowerCase().includes(search)) : data;
+
+  document.getElementById('count-consolidado').textContent = `${filtered.length} artículos`;
+  document.getElementById('badge-consolidado').textContent = data.length;
+
+  const body = document.getElementById('consBody');
+  if (filtered.length === 0) {
+    body.innerHTML = `<div class="cons-empty"><div style="font-size:36px;margin-bottom:10px">📋</div><p>Aún no hay cantidades ingresadas.</p><p style="font-size:11px;margin-top:6px;color:var(--muted)">Las cantidades que ingreses en cada sección aparecerán aquí consolidadas.</p></div>`;
+    return;
+  }
+
+  let rows = filtered.map((d, i) => {
+    const isMulti = d.bodegas.length > 1;
+    const bodegaHTML = d.bodegas.map(b =>
+      `<span class="${isMulti ? 'multi-badge' : ''}">${b.icono} ${b.nombre}: ${b.qty % 1 === 0 ? b.qty : b.qty.toFixed(3)}</span>`
+    ).join('');
+    const totalStr = d.total % 1 === 0 ? d.total : d.total.toFixed(3);
+    return `<tr class="${isMulti ? 'multi' : ''}">
+      <td class="cons-codigo">${d.codigo}</td>
+      <td class="cons-producto">${d.producto}${isMulti ? ' <span style="color:var(--purple);font-size:10px">●</span>' : ''}</td>
+      <td class="cons-bodegas">${bodegaHTML}</td>
+      <td class="cons-udm">${d.udm}</td>
+      <td class="cons-total">${totalStr}</td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `<table class="cons-table">
+    <thead><tr>
+      <th>Código SAP</th><th>Producto</th><th>Bodegas</th><th>UDM</th><th style="text-align:right">TOTAL</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div style="text-align:right;font-size:10px;color:var(--muted);margin-top:8px">
+    ● = artículo en múltiples bodegas
+  </div>`;
+}
+
+function sincronizarConsolidado() {
+  // El consolidado lo calcula el Apps Script automáticamente
+  // después de cada escritura de sección. No se necesita enviar desde la app.
+}
+
+// ──────────────────────────────────────────────
+//  PROGRESS
+// ──────────────────────────────────────────────
+function updateProgress() {
+  let total = 0, filled = 0;
+  SECTIONS.forEach(sec => {
+    const presetTotal = sec.items.length;
+    const manualTotal = manualItems[sec.id].length;
+    total += presetTotal + manualTotal;
+    const f = Object.keys(quantities[sec.id]).length;
+    filled += f;
+    const badge = document.getElementById(`badge-${sec.id}`);
+    if (badge) {
+      badge.textContent = `${f}/${presetTotal + manualTotal}`;
+      const tab = badge.closest('.nav-tab');
+      if (f > 0 && f === presetTotal + manualTotal) tab.classList.add('done');
+      else tab.classList.remove('done');
+    }
+  });
+  const pct = total > 0 ? (filled / total * 100).toFixed(1) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${filled} / ${total}`;
+  document.getElementById('footerFilled').textContent = filled;
+}
+
+// ──────────────────────────────────────────────
+//  LIMPIAR
+// ──────────────────────────────────────────────
+function limpiarSeccion() {
+  if (activeSection < 0) return;
+  const sec = SECTIONS[activeSection];
+  if (!confirm(`¿Limpiar todos los campos de "${sec.nombre}"?`)) return;
+  quantities[sec.id] = {};
+  sec.items.forEach((_, ri) => {
+    const input = document.getElementById(`qty-${sec.id}-${ri}`);
+    const row = document.getElementById(`row-${sec.id}-${ri}`);
+    if (input) { input.value = ''; input.classList.remove('has-value'); }
+    if (row) row.classList.remove('filled');
+  });
+  manualItems[sec.id].forEach(m => {
+    const input = document.getElementById(`qty-${sec.id}-${m.key}`);
+    const row = document.getElementById(`row-${sec.id}-${m.key}`);
+    if (input) { input.value = ''; input.classList.remove('has-value'); }
+    if (row) row.classList.remove('filled');
+  });
+  updateProgress();
+  guardarEstado(sec.id);
+  showToast(`✓ ${sec.nombre} limpiada`);
+}
+
+// ──────────────────────────────────────────────
+//  EXPORT EXCEL
+// ──────────────────────────────────────────────
+function exportarExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Por bodega
+  const wsData = [["INVENTARIO FÍSICO GCG — 10 DE MAYO 2026"]];
+  wsData.push([]);
+
+  SECTIONS.forEach(sec => {
+    wsData.push([]);
+    wsData.push([sec.icono + " " + sec.nombre.toUpperCase()]);
+    wsData.push(["CODIGO SAP", "PRODUCTO", "CANTIDAD FÍSICA", "UDM", "TIPO"]);
+    let hasRows = false;
+    sec.items.forEach((item, ri) => {
+      const qty = quantities[sec.id][ri];
+      const qtyVal = (qty !== undefined && qty !== '') ? parseFloat(qty) : '';
+      wsData.push([item[0], item[1], qtyVal, item[2], "Lista"]);
+      hasRows = true;
+    });
+    manualItems[sec.id].forEach(m => {
+      const qty = quantities[sec.id][m.key];
+      const qtyVal = (qty !== undefined && qty !== '') ? parseFloat(qty) : '';
+      wsData.push([m.codigo, m.producto, qtyVal, m.udm, "Manual"]);
+      hasRows = true;
+    });
+    if (!hasRows) wsData.push(["", "(Sin artículos)", "", "", ""]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:15},{wch:45},{wch:18},{wch:8},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, "INVENTARIO FISICO");
+
+  // Sheet 2: Consolidado
+  const consData = buildConsolidadoData();
+  const wsConsRows = [["CODIGO SAP", "PRODUCTO", "TOTAL", "UDM", "BODEGAS DETALLE"]];
+  consData.forEach(d => {
+    const detalle = d.bodegas.map(b => `${b.nombre}: ${b.qty}`).join(' | ');
+    wsConsRows.push([d.codigo, d.producto, d.total, d.udm, detalle]);
+  });
+  const wsCons = XLSX.utils.aoa_to_sheet(wsConsRows);
+  wsCons['!cols'] = [{wch:15},{wch:45},{wch:12},{wch:8},{wch:60}];
+  XLSX.utils.book_append_sheet(wb, wsCons, "CONSOLIDADO");
+
+  const ts = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `INVENTARIO_GCG_${ts}.xlsx`);
+  showToast('✓ Excel generado con 2 hojas');
+}
+
+function exportarExcelConsolidado() {
+  const wb = XLSX.utils.book_new();
+  const data = buildConsolidadoData();
+  const rows = [["CODIGO SAP", "PRODUCTO", "TOTAL", "UDM", "BODEGAS DETALLE"]];
+  data.forEach(d => {
+    const detalle = d.bodegas.map(b => `${b.nombre}: ${b.qty}`).join(' | ');
+    rows.push([d.codigo, d.producto, d.total, d.udm, detalle]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:15},{wch:45},{wch:12},{wch:8},{wch:60}];
+  XLSX.utils.book_append_sheet(wb, ws, "CONSOLIDADO");
+  XLSX.writeFile(wb, `CONSOLIDADO_GCG_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('✓ Consolidado exportado');
+}
+
+// ──────────────────────────────────────────────
+//  TOAST
+// ──────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+
+// ──────────────────────────────────────────────
+//  PIN ACCESS
+// ──────────────────────────────────────────────
+const VALID_PIN = '7890';
+
+function onPinInput(val) {
+  // Update dots
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('dot' + i);
+    dot.classList.toggle('filled', i < val.length);
+    dot.classList.remove('error');
+  }
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('pinInput').classList.remove('shake');
+  if (val.length === 4) setTimeout(checkPin, 120);
+}
+
+function checkPin() {
+  const val = document.getElementById('pinInput').value;
+  if (val === VALID_PIN) {
+    document.getElementById('pinScreen').classList.add('hidden');
+    sessionStorage.setItem('gcg_inv_auth', '1');
+  } else {
+    const input = document.getElementById('pinInput');
+    input.classList.add('shake');
+    document.getElementById('pinError').textContent = 'PIN incorrecto. Intentá de nuevo.';
+    for (let i = 0; i < 4; i++) {
+      document.getElementById('dot' + i).classList.add('error');
+    }
+    setTimeout(() => {
+      input.value = '';
+      input.classList.remove('shake');
+      for (let i = 0; i < 4; i++) {
+        const dot = document.getElementById('dot' + i);
+        dot.classList.remove('filled', 'error');
+      }
+    }, 800);
+  }
+}
+
+// Check if already authenticated this session
+if (sessionStorage.getItem('gcg_inv_auth') === '1') {
+  document.getElementById('pinScreen').classList.add('hidden');
+}
+
+// Focus PIN input on load
+window.addEventListener('load', () => {
+  if (!document.getElementById('pinScreen').classList.contains('hidden')) {
+    document.getElementById('pinInput').focus();
+  }
+});
+
+window.onload = init;
+</script>
+
+<div class="pin-screen" id="pinScreen">
+  <div class="pin-logo">GCG</div>
+  <div class="pin-app-name">Inventario de Producción</div>
+  <div class="pin-app-sub">Cocina de Vuelos S.A. de C.V.</div>
+  <div class="pin-card">
+    <div class="pin-label">Ingresá tu PIN de acceso</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="dot0"></div>
+      <div class="pin-dot" id="dot1"></div>
+      <div class="pin-dot" id="dot2"></div>
+      <div class="pin-dot" id="dot3"></div>
+    </div>
+    <div class="pin-input-wrap">
+      <input type="password" inputmode="numeric" maxlength="4"
+        class="pin-input" id="pinInput"
+        oninput="onPinInput(this.value)"
+        onkeydown="if(event.key==='Enter') checkPin()">
+    </div>
+    <div class="pin-error" id="pinError"></div>
+    <button class="btn-pin-enter" onclick="checkPin()">INGRESAR</button>
+  </div>
+  <div class="pin-footer">Cocina de Vuelos S.A. de C.V. · GCG</div>
+</div>
+</body>
+</html>
